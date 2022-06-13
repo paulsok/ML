@@ -1,0 +1,6 @@
+__pycache__
+.ipynb_checkpoints
+logs
+.DS_Store
+.vscode
+.vscode/settings.json
