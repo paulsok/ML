@@ -56,3 +56,23 @@ def preprocess(texts):
 X_new = preprocess(["How are yo"])
 Y_pred = model.predict_classes(X_new)
 print(tokenizer.sequences_to_texts(Y_pred + 1)[0][-1])
+
+
+# generating fake shakespearean text
+def next_char(text, temperature=1):
+    X_new = preprocess([text])
+    y_proba = model.predict(X_new)[0, -1:, :]
+    rescaled_logits = tf.math.log(y_proba) / temperature
+    char_id = tf.random.categorical(rescaled_logits, num_samples=1) + 1
+    return tokenizer.sequences_to_texts(char_id.numpy())[0]
+
+
+def complete_text(text, n_chars=50, temperature=1):
+    for _ in range(n_chars):
+        text += next_char(text, temperature)
+    return text
+
+
+print(complete_text("t", temperature=0.2))
+print(complete_text("w", temperature=1))
+print(complete_text("w", temperature=2))
