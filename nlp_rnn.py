@@ -1,6 +1,7 @@
 import keras
 import numpy as np
 import tensorflow as tf
+import tensorflow_hub as hub
 from collections import Counter
 import tensorflow_datasets as tfds
 
@@ -149,4 +150,31 @@ model = keras.models.Sequential([keras.layers.Embedding(vocab_size + num_oov_buc
         keras.layers.Dense(1, activation="sigmoid")])
 
 model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+history = model.fit(train_set, epochs=5)
+
+
+# masking
+K = keras.backend
+inputs = keras.layers.Input(shape=[None])
+mask = keras.layers.Lambda(lambda inputs: K.not_equal(inputs, 0))(inputs)
+z = keras.layers.Embedding(vocab_size + num_oov_buckets, embed_size)(inputs)
+z = keras.layers.GRU(128, return_sequences=True)(z, mask=mask)
+z = keras.layers.GRU(128)(z, mask=mask)
+outputs = keras.layers.Dense(1, activation="sigmoid")(z)
+model = keras.Model(inputs=[inputs], outputs=[outputs])
+
+# Reusing Pretrained Embeddings
+model = keras.Sequential([
+    hub.KerasLayer("https://tfhub.dev/google/tf2-preview/nnlm-en-dim50/1",
+                    dtype=tf.string, input_shape=[], output_shape=[50]),
+    keras.layers.Dense(128, activation="relu"),
+    keras.layers.Dense(1, activation="sigmoid")
+])
+model.compile(loss="binary_crossentropy", optimizer="adam",
+                metrics=["accuracy"])
+
+datasets, info = tfds.load("imdb_reviews", as_supervised=True, with_info=True)
+train_size = info.splits["train"].num_examples
+batch_size = 32
+train_set = datasets["train"].batch(batch_size).prefetch(1)
 history = model.fit(train_set, epochs=5)
